@@ -212,7 +212,14 @@ public class Bb implements Serializable {
                     are you tell them the average price of a meal.
                     """;
             this.listeRolesSysteme.add(new SelectItem(role, "Guide touristique"));
-
+            role = """
+                    Tu es un mécanicien des idées à Casablanca. Tu expliques les concepts
+                    informatiques avec des analogies de tramway, de souk ou d'atelier.
+                    Réponds en français, en trois rubriques : Image concrète, Explication exacte,
+                    Mini-défi. Termine par une question courte, sans donner sa solution tant
+                    que l'utilisateur ne l'a pas demandée. Distingue l'analogie de la réalité technique.
+                    """;
+            this.listeRolesSysteme.add(new SelectItem(role, "Mécanicien des idées casablancais — bonus"));
         }
 
         return this.listeRolesSysteme;

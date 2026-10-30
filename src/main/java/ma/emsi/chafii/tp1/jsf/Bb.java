@@ -1,7 +1,8 @@
 package ma.emsi.chafii.tp1.jsf; // A modifier...
 
 
-import ma.emsi.chafii.tp1.service.GenerateurReponse;
+import ma.emsi.chafii.tp1.llm.JsonAdapterPourGemini;
+import ma.emsi.chafii.tp1.llm.LlmInteraction;
 import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.FacesContext;
 import jakarta.faces.model.SelectItem;
@@ -11,6 +12,7 @@ import jakarta.inject.Named;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -56,7 +58,11 @@ public class Bb implements Serializable {
      * Service pour modifier la question et générer la réponse.
      */
     @Inject
-    private GenerateurReponse generateurReponse;
+    private JsonAdapterPourGemini jsonAdapter;
+
+    private boolean debug;
+    private String texteRequeteJson;
+    private String texteReponseJson;
 
     /**
      * Contexte JSF. Utilisé pour qu'un message d'erreur s'affiche dans le formulaire.
@@ -69,6 +75,13 @@ public class Bb implements Serializable {
      */
     public Bb() {
     }
+
+    public boolean isDebug() { return debug; }
+    public void setDebug(boolean debug) { this.debug = debug; }
+    public String getTexteRequeteJson() { return texteRequeteJson; }
+    public void setTexteRequeteJson(String texteRequeteJson) { this.texteRequeteJson = texteRequeteJson; }
+    public String getTexteReponseJson() { return texteReponseJson; }
+    public void setTexteReponseJson(String texteReponseJson) { this.texteReponseJson = texteReponseJson; }
 
     public String getRoleSysteme() {
         return this.roleSysteme;
@@ -113,9 +126,7 @@ public class Bb implements Serializable {
 
     /**
      * Envoie la question au serveur.
-     * En attendant de l'envoyer à un LLM, le serveur fait un traitement quelconque, juste pour tester :
-     * Le traitement consiste à copier la question en minuscules et à l'entourer avec "||". Le rôle système
-     * est ajouté au début de la première réponse.
+     * Utilise JsonAdapterPourGemini pour obtenir la réponse du LLM et les JSON échangés.
      *
      * @return null pour rester sur la même page.
      */
@@ -133,7 +144,22 @@ public class Bb implements Serializable {
             // Fige la liste déroulante qui permet de choisir le rôle système
             this.roleSystemeChangeable = false;
         }
-        this.reponse = this.generateurReponse.genererReponse(this.question, this.roleSysteme);
+        if (this.conversation.isEmpty()) {
+            jsonAdapter.setSystemRole(this.roleSysteme);
+        }
+        try {
+            LlmInteraction interaction = jsonAdapter.envoyerRequete(question);
+            this.reponse = interaction.reponseExtraite();
+            this.texteRequeteJson = interaction.questionJson();
+            this.texteReponseJson = interaction.reponseJson();
+        } catch (Exception e) {
+            this.reponse = "Erreur : " + e.getMessage();
+            FacesMessage message = new FacesMessage(FacesMessage.SEVERITY_ERROR,
+                    "Problème de connexion avec l'API du LLM",
+                    "Problème de connexion avec l'API du LLM" + e.getMessage() + "\n"
+                            + Arrays.toString(e.getStackTrace()));
+            facesContext.addMessage(null, message);
+        }
         
         // La conversation contient l'historique des questions-réponses depuis le début.
         afficherConversation();
@@ -186,6 +212,7 @@ public class Bb implements Serializable {
                     are you tell them the average price of a meal.
                     """;
             this.listeRolesSysteme.add(new SelectItem(role, "Guide touristique"));
+
         }
 
         return this.listeRolesSysteme;
